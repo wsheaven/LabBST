@@ -114,8 +114,8 @@ public:
    // Status
    //
 
-   bool   empty() const noexcept { return true; }
-   size_t size()  const noexcept { return 99;   }
+   bool   empty() const noexcept { return root == nullptr; }
+   size_t size()  const noexcept { return numElements;   }
    
 
 private:
@@ -158,8 +158,8 @@ public:
    // 
    // Status
    //
-   bool isRightChild(BNode * pNode) const { return true; }
-   bool isLeftChild( BNode * pNode) const { return true; }
+   bool isRightChild(BNode * pNode) const { return pLeft != nullptr; }
+   bool isLeftChild( BNode * pNode) const { return pRight != nullptr; }
 
    //
    // Data
@@ -189,14 +189,17 @@ class BST <T> :: iterator
    friend class set; 
 public:
    // constructors and assignment
-   iterator(BNode * p = nullptr)          
+   iterator(BNode * p = nullptr) : pNode(p)
    { 
    }
-   iterator(const iterator & rhs)         
+   iterator(const iterator & rhs) : pNode(rhs.pNode)
    { 
    }
    iterator & operator = (const iterator & rhs)
    {
+      if (this != &rhs) {
+        pNode = rhs.pNode;
+      }
       return *this;
    }
 
@@ -213,7 +216,9 @@ public:
    // de-reference. Cannot change because it will invalidate the BST
    const T & operator * () const 
    {
-      return *(new T);
+       
+       //return this->pNode->data;
+       return *(new T);
    }
 
    // increment and decrement
@@ -253,8 +258,8 @@ private:
 template <typename T>
 BST <T> ::BST()
 {
-   numElements = 99;
-   root = new BNode;
+   numElements = 0;
+   root = nullptr; 
 }
 
 /*********************************************
@@ -264,8 +269,9 @@ BST <T> ::BST()
 template <typename T>
 BST <T> :: BST ( const BST<T>& rhs) 
 {
-   numElements = 99;
-   root = new BNode;
+   numElements = 0;
+   root = nullptr;
+   *this = rhs;
 }
 
 /*********************************************
@@ -275,8 +281,11 @@ BST <T> :: BST ( const BST<T>& rhs)
 template <typename T>
 BST <T> :: BST(BST <T> && rhs) 
 {
-   numElements = 99;
-   root = new BNode;
+   numElements = std::move(rhs.numElements);
+   root = std::move(rhs.root);
+
+   rhs.root = nullptr;
+   rhs.numElements = 0; 
 }
 
 /*********************************************
@@ -286,8 +295,9 @@ BST <T> :: BST(BST <T> && rhs)
 template <typename T>
 BST <T> ::BST(const std::initializer_list<T>& il)
 {
-   numElements = 99;
-   root = new BNode;
+    numElements = 0;
+    root = nullptr;
+    *this = il;
 }
 
 /*********************************************
@@ -296,7 +306,7 @@ BST <T> ::BST(const std::initializer_list<T>& il)
 template <typename T>
 BST <T> :: ~BST()
 {
-
+    
 }
 
 
@@ -347,6 +357,16 @@ void BST <T> :: swap (BST <T>& rhs)
 template <typename T>
 std::pair<typename BST <T> :: iterator, bool> BST <T> :: insert(const T & t, bool keepUnique)
 {
+    // Start by checking the root, if smaller go left, if bigger go right. 
+    // then do same thing check which way to go. Go until nullptr then call the addleft or addright
+    BST::BNode*  pCurrent = this->root;
+    if (t < pCurrent->data)
+    {
+        pCurrent = pCurrent->pLeft;
+
+    }
+
+    
    std::pair<iterator, bool> pairReturn(end(), false);
    return pairReturn;
 }
@@ -385,7 +405,16 @@ void BST <T> ::clear() noexcept
 template <typename T>
 typename BST <T> :: iterator custom :: BST <T> :: begin() const noexcept
 {
-   return end();
+    if (empty())
+    {
+        return end();
+    }
+    BNode* p = root;
+    while (p->pLeft)
+    {
+        p = p->pLeft; 
+    }
+    return iterator(p);
 }
 
 
@@ -394,8 +423,25 @@ typename BST <T> :: iterator custom :: BST <T> :: begin() const noexcept
  * Return the node corresponding to a given value
  ****************************************************/
 template <typename T>
-typename BST <T> :: iterator BST<T> :: find(const T & t)
+typename BST <T> ::iterator BST<T> ::find(const T& t)
 {
+    BNode * p = root; 
+
+    while (p != nullptr)
+    {
+        if (p->data == t)
+        {
+            return iterator(p);
+        }
+        else if (t < p->data)
+        {
+            p = p->pLeft;
+        }
+        else
+        {
+            p = p->pRight; 
+        }
+    }
    return end();
 }
 
@@ -485,7 +531,44 @@ void BST <T> ::BNode::addRight(T && t)
 template <typename T>
 typename BST <T> :: iterator & BST <T> :: iterator :: operator ++ ()
 {
-   return *this;  
+    if (this->pNode == nullptr)
+    {
+        return *this; 
+    }
+    BST::BNode* pCurrent = this->pNode; 
+    if (pCurrent->pRight)
+    {
+        pCurrent = pCurrent->pRight;
+        while (pCurrent->pLeft)
+        {
+            pCurrent = pCurrent->pLeft;
+        }
+        this->pNode = pCurrent; 
+        return *this; 
+
+    }
+
+    if (pCurrent->pRight == nullptr && pCurrent->pParent->pLeft == pCurrent)
+    {
+        pCurrent = pCurrent->pParent;
+        this->pNode = pCurrent;
+        return *this;
+    }
+    
+    if (pCurrent->pRight == nullptr && pCurrent->pParent->pRight == pCurrent)
+    {
+        while (pCurrent->pParent && pCurrent->pParent->pRight == pCurrent)
+        {
+            pCurrent = pCurrent->pParent; 
+        }
+        pCurrent = pCurrent->pParent; 
+        this->pNode = pCurrent;
+        return *this;
+    }
+   pCurrent = nullptr;
+   this->pNode = pCurrent;
+   return *this;
+     
 }
 
 /**************************************************
@@ -495,6 +578,41 @@ typename BST <T> :: iterator & BST <T> :: iterator :: operator ++ ()
 template <typename T>
 typename BST <T> :: iterator & BST <T> :: iterator :: operator -- ()
 {
+
+   if (this->pNode == nullptr)
+   {
+       return *this;
+   }
+   BST::BNode* pCurrent = this->pNode;
+   if (pCurrent->pLeft)
+   {
+       pCurrent = pCurrent->pLeft;
+       while (pCurrent->pRight)
+       {
+           pCurrent = pCurrent->pRight;
+       }
+       this->pNode = pCurrent;
+       return *this;
+
+   }
+
+   if (pCurrent->pLeft == nullptr && pCurrent->pParent->pRight == pCurrent)
+   {
+       pCurrent = pCurrent->pParent;
+       this->pNode = pCurrent;
+       return *this;
+   }
+
+   if (pCurrent->pLeft == nullptr && pCurrent->pParent->pLeft == pCurrent)
+   {
+       while (pCurrent->pParent && pCurrent->pParent->pLeft == pCurrent)
+       {
+           pCurrent = pCurrent->pParent;
+       }
+       pCurrent = pCurrent->pParent;
+       this->pNode = pCurrent;
+       return *this;
+   }
    return *this;
 
 }
