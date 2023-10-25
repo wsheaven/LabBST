@@ -14,7 +14,7 @@
  *        BST                 : A class that represents a binary search tree
  *        BST::iterator       : An iterator through BST
  * Author
- *    <your names here>
+ *    Sam Heaven, Abram Hansen
  ************************************************************************/
 
 #pragma once
@@ -206,19 +206,17 @@ public:
    // compare
    bool operator == (const iterator & rhs) const
    {
-      return true;
+      return pNode == rhs.pNode;
    }
    bool operator != (const iterator & rhs) const
    {
-      return true;
+      return pNode != rhs.pNode;
    }
 
-   // de-reference. Cannot change because it will invalidate the BST
+   // de-reference.
    const T & operator * () const 
    {
-       
-       //return this->pNode->data;
-       return *(new T);
+      return pNode->data;
    }
 
    // increment and decrement
@@ -269,9 +267,14 @@ BST <T> ::BST()
 template <typename T>
 BST <T> :: BST ( const BST<T>& rhs) 
 {
-   numElements = 0;
-   root = nullptr;
-   *this = rhs;
+   BNode* current = nullptr;
+   iterator rhsIterator = rhs.begin();
+
+   while (rhsIterator != nullptr)
+   {
+      insert(rhsIterator.pNode->data);
+      ++rhsIterator;
+   }
 }
 
 /*********************************************
@@ -281,8 +284,8 @@ BST <T> :: BST ( const BST<T>& rhs)
 template <typename T>
 BST <T> :: BST(BST <T> && rhs) 
 {
-   numElements = std::move(rhs.numElements);
-   root = std::move(rhs.root);
+   numElements = rhs.numElements;
+   root = rhs.root;
 
    rhs.root = nullptr;
    rhs.numElements = 0; 
@@ -462,6 +465,8 @@ template <typename T>
 void BST <T> :: BNode :: addLeft (BNode * pNode)
 {
     this->pLeft = pNode; 
+
+    pNode->pParent = this;
 }
 
 /******************************************************
@@ -472,6 +477,8 @@ template <typename T>
 void BST <T> :: BNode :: addRight (BNode * pNode)
 {
     this->pRight = pNode;
+
+    pNode->pParent = this;
 }
 
 /******************************************************
@@ -481,7 +488,8 @@ void BST <T> :: BNode :: addRight (BNode * pNode)
 template <typename T>
 void BST<T> :: BNode :: addLeft (const T & t)
 {
-
+   this->pLeft = new BNode<T>(t);
+   this->pLeft->pParent = this;
 }
 
 /******************************************************
@@ -491,7 +499,8 @@ void BST<T> :: BNode :: addLeft (const T & t)
 template <typename T>
 void BST<T> ::BNode::addLeft(T && t)
 {
-
+   this->pLeft = new BNode<T>(std::move(t));
+   this->pLeft->pParent = this;
 }
 
 /******************************************************
@@ -501,7 +510,8 @@ void BST<T> ::BNode::addLeft(T && t)
 template <typename T>
 void BST <T> :: BNode :: addRight (const T & t)
 {
-
+   this->pRight = new BNode<T>(t);
+   this->pRight->pParent = this;
 }
 
 /******************************************************
@@ -511,7 +521,8 @@ void BST <T> :: BNode :: addRight (const T & t)
 template <typename T>
 void BST <T> ::BNode::addRight(T && t)
 {
-
+   this->pRight = new BNode<T>(std::move(t));
+   this->pRight->pParent = this;
 }
 
 
